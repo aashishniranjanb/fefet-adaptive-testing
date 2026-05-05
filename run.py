@@ -14,6 +14,7 @@ from src.simulation.labeling import get_best_test
 from src.simulation.fault_model import detect_fault, TESTS
 from src.ml.train import prepare_data
 from src.evaluation.stats import mean_ci_95_binary
+from src.dataset.tcad_loader import load_tcad_data, normalize_delta_vth, tcad_to_dataset
 
 # -----------------------------
 # 1. Generate + Label Dataset
@@ -27,6 +28,16 @@ def build_dataset(samples_per_bin=1000):
             s["Ncycles"] = N
             s["best_test"] = get_best_test(s)
         dataset.extend(subset)
+    return dataset
+
+def build_dataset_from_tcad(path):
+    df = load_tcad_data(path)
+    df = normalize_delta_vth(df)
+    dataset = tcad_to_dataset(df)
+
+    for s in dataset:
+        s["best_test"] = get_best_test(s)
+
     return dataset
 
 # -----------------------------
@@ -80,12 +91,16 @@ def train_ml(dataset):
 
     return model
 
-def ml_predict(model, s):
-    # small bias toward Adaptive for high degradation as requested by user
-    if s["delta_vth"] > 0.12:
-        return "Adaptive"
-    X = [[s["delta_vth"], s["Ncycles"], s["T"], s["Nwrites"]]]
-    return model.predict(X)[0]
+def batch_ml_predict(model, dataset):
+    X_all = [[s["delta_vth"], s["Ncycles"], s["T"], s["Nwrites"]] for s in dataset]
+    all_preds = model.predict(X_all)
+    preds = []
+    for i, s in enumerate(dataset):
+        if s["delta_vth"] > 0.12:
+            preds.append("Adaptive")
+        else:
+            preds.append(all_preds[i])
+    return preds
 
 # -----------------------------
 # 3. Coverage vs Endurance (with CI)
@@ -99,6 +114,8 @@ def plot_coverage_with_errorbars(dataset, model):
 
     for N in levels:
         subset = [d for d in dataset if d["Ncycles"] == N]
+        if not subset:
+            continue
 
         # March
         m = [detect_fault(s, "MarchC") for s in subset]
@@ -108,8 +125,8 @@ def plot_coverage_with_errorbars(dataset, model):
 
         # Adaptive
         a = []
-        for s in subset:
-            pred = ml_predict(model, s)
+        preds = batch_ml_predict(model, subset)
+        for s, pred in zip(subset, preds):
             a.append(detect_fault(s, pred))
 
         mean, lo, hi = mean_ci_95_binary(a)
@@ -140,21 +157,22 @@ def plot_coverage_vs_pattern_count(dataset, model):
     march_cov = []
     adaptive_cov = []
 
+    preds = batch_ml_predict(model, dataset)
+
     for p in pattern_counts:
         # March C- (less effective scaling)
         march_det = []
+        march_trials = max(1, p // 25)
         for s in dataset:
-            detections = [detect_fault(s, "MarchC") for _ in range(max(1, p // 25))]
+            detections = [detect_fault(s, "MarchC") for _ in range(march_trials)]
             march_det.append(np.mean(detections))
         march_cov.append(100 * np.mean(march_det))
 
         # Adaptive (ML-based)
         adaptive_det = []
-        for s in dataset:
-            detections = []
-            for _ in range(max(1, p // 12)):  # more efficient usage
-                pred = ml_predict(model, s)
-                detections.append(detect_fault(s, pred))
+        adapt_trials = max(1, p // 12)
+        for s, pred in zip(dataset, preds):
+            detections = [detect_fault(s, pred) for _ in range(adapt_trials)]
             adaptive_det.append(np.mean(detections))
 
         adaptive_cov.append(100 * np.mean(adaptive_det))
@@ -182,16 +200,17 @@ def generate_table_1_with_ci(dataset, model):
     print("\n=== TABLE I (with 95% CI) ===")
     print("Method\t\tCoverage (%) [95% CI]\tFNR (%)")
 
+    preds = batch_ml_predict(model, dataset)
+
     for method in methods:
         dets = []
-        for s in dataset:
+        for i, s in enumerate(dataset):
             if method == "MarchC":
                 det = detect_fault(s, "MarchC")
             elif method == "Random":
                 det = detect_fault(s, random.choice(["MATS+", "MarchC"]))
             else:
-                pred = ml_predict(model, s)
-                det = detect_fault(s, pred)
+                det = detect_fault(s, preds[i])
             dets.append(det)
 
         mean, lo, hi = mean_ci_95_binary(dets)
@@ -209,8 +228,8 @@ def generate_table_2_with_ci(dataset, model):
             continue
         march = [detect_fault(s, "MarchC") for s in subset]
         adaptive = []
-        for s in subset:
-            pred = ml_predict(model, s)
+        preds = batch_ml_predict(model, subset)
+        for s, pred in zip(subset, preds):
             adaptive.append(detect_fault(s, pred))
 
         m_mean, m_lo, m_hi = mean_ci_95_binary(march)
@@ -223,17 +242,18 @@ def generate_ablation_with_ci(dataset, model):
     print("\n=== TABLE III (Ablation with 95% CI) ===")
     print("Config\t\tCoverage (%) [CI]\tFNR (%)")
 
+    preds = batch_ml_predict(model, dataset)
+
     for cfg in configs:
         dets = []
-        for s in dataset:
+        for i, s in enumerate(dataset):
             if cfg == "Baseline":
                 det = detect_fault(s, "MarchC")
             elif cfg == "Degradation_Model":
                 test = "MATS+" if s["delta_vth"] > 0.12 else "MarchC"
                 det = detect_fault(s, test)
             else:
-                pred = ml_predict(model, s)
-                det = detect_fault(s, pred)
+                det = detect_fault(s, preds[i])
             dets.append(det)
 
         mean, lo, hi = mean_ci_95_binary(dets)
@@ -265,22 +285,30 @@ def main():
     print("=== FeFET Adaptive Testing Pipeline ===")
 
     # Step 1: Dataset
-    dataset = build_dataset(1000) # 1000 per bin = 3000 total
+    print("Building dataset...")
+    dataset = build_dataset_from_tcad("data/tcad_data.csv")
     save_dataset(dataset)
     
     # Step 1b: Distribution Plot
+    print("Plotting distribution...")
     plot_fault_distribution(dataset)
 
     # Step 2: ML
+    print("Training ML...")
     model = train_ml(dataset)
 
     # Step 3: Plots
+    print("Plotting coverage with error bars...")
     plot_coverage_with_errorbars(dataset, model)
+    print("Plotting coverage vs pattern count...")
     plot_coverage_vs_pattern_count(dataset, model)
 
     # Step 4: Tables
+    print("Generating Table I...")
     generate_table_1_with_ci(dataset, model)
+    print("Generating Table II...")
     generate_table_2_with_ci(dataset, model)
+    print("Generating Table III...")
     generate_ablation_with_ci(dataset, model)
 
     print("\nPipeline complete. Check /results folder for plots!")
