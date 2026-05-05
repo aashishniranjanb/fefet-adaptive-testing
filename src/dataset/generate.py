@@ -24,20 +24,27 @@ def generate_sample():
     }
 
 def assign_fault(delta_vth, T, Nwrites):
-    """ Fault labeling based on degradation physics """
-    # Strong degradation → SDRF
+    """
+    Target distribution (approx):
+    PPF ~30%, SDRF ~25%, DIRF ~25%, CDF ~20%
+    """
+    # high degradation → SDRF
     if delta_vth > 0.18 and T >= 25:
         return "SDRF"
-    # Write instability → DIRF
+
+    # write-history driven → DIRF
     if delta_vth > 0.12 and Nwrites > 50:
         return "DIRF"
-    # Moderate degradation → PPF
+
+    # moderate degradation → PPF
     if delta_vth > 0.07:
         return "PPF"
-    # Coupling (rare, stochastic)
-    if np.random.rand() < 0.1:
+
+    # residual → CDF (increase from 0.1 → 0.2)
+    if np.random.rand() < 0.2:
         return "CDF"
-    return "NONE"
+
+    return "PPF"   # fallback (keeps dataset dense)
 
 def generate_dataset(n=3000):
     return [generate_sample() for _ in range(n)]

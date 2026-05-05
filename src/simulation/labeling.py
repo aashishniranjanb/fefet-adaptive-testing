@@ -1,11 +1,11 @@
 from .fault_model import detect_fault, TESTS
 
 def get_best_test(sample):
-    results = {}
+    # deterministic preference with small Monte Carlo smoothing
+    scores = {}
+    
     for test in TESTS:
-        detections = [detect_fault(sample, test) for _ in range(5)]
-        results[test] = sum(detections)
+        trials = [detect_fault(sample, test) for _ in range(7)]
+        scores[test] = sum(trials)
         
-    # choose test with highest detection success
-    best_test = max(results, key=results.get)
-    return best_test
+    return max(scores, key=scores.get)
