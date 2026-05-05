@@ -14,7 +14,7 @@ from src.simulation.labeling import get_best_test
 from src.simulation.fault_model import detect_fault, TESTS
 from src.ml.train import prepare_data
 from src.evaluation.stats import mean_ci_95_binary
-from src.dataset.tcad_loader import load_tcad_data, normalize_delta_vth, tcad_to_dataset
+from src.dataset.tcad_integration import build_dataset_from_tcad
 
 # -----------------------------
 # 1. Generate + Label Dataset
@@ -30,15 +30,7 @@ def build_dataset(samples_per_bin=1000):
         dataset.extend(subset)
     return dataset
 
-def build_dataset_from_tcad(path):
-    df = load_tcad_data(path)
-    df = normalize_delta_vth(df)
-    dataset = tcad_to_dataset(df)
 
-    for s in dataset:
-        s["best_test"] = get_best_test(s)
-
-    return dataset
 
 # -----------------------------
 # 1b. Data Distribution Plot

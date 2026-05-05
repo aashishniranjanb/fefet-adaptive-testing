@@ -1,0 +1,32 @@
+go sde
+
+# Create silicon substrate
+create rectangle silicon x1=0 y1=0 x2=1.0 y2=0.2
+
+# Create oxide layer
+create rectangle oxide x1=0 y1=0.2 x2=1.0 y2=0.25
+
+# Define regions
+region silicon material=Silicon
+region oxide material=Oxide
+
+# Source region doping
+doping uniform region=silicon type=donor conc=1e20 x1=0 y1=0 x2=0.2 y2=0.2
+
+# Drain region doping
+doping uniform region=silicon type=donor conc=1e20 x1=0.8 y1=0 x2=1.0 y2=0.2
+
+# Channel doping
+doping uniform region=silicon type=acceptor conc=1e17
+
+# Contacts
+electrode name=source x1=0 y1=0 x2=0.2 y2=0
+electrode name=drain  x1=0.8 y1=0 x2=1.0 y2=0
+electrode name=gate   x1=0 y1=0.25 x2=1.0 y2=0.25
+electrode name=bulk   backside
+
+# Mesh
+mesh space.mult=1.0
+
+# Save structure
+save name=mos.tdr
