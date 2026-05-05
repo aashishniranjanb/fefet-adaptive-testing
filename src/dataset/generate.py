@@ -5,9 +5,12 @@ def generate_sample():
     T = np.random.choice([-40, 25, 125])
     Nwrites = np.random.randint(1, 100)
     
-    # degradation model
+    # degradation model with device variation & cycle-to-cycle noise
+    device_variation = np.random.normal(0, 0.015)
+    cycle_noise = np.random.normal(0, 0.005 * np.log10(Ncycles))
+    
     delta_vth = 0.05 * np.log10(Ncycles) + 0.0005 * T + 0.0008 * Nwrites \
-                + np.random.normal(0, 0.005)
+                + device_variation + cycle_noise
                 
     # assign fault
     fault = assign_fault(delta_vth, T, Nwrites)
