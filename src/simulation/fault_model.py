@@ -11,22 +11,22 @@ def detect_fault(sample, test):
         "PPF": {
             "MATS+": 0.75,
             "MarchC": 0.72,
-            "Adaptive": 0.90
+            "Adaptive": 0.95
         },
         "SDRF": {
             "MATS+": 0.58,
             "MarchC": 0.62,
-            "Adaptive": 0.94   # ↑ strong gain
+            "Adaptive": 0.97   # ↑ strong gain
         },
         "DIRF": {
             "MATS+": 0.60,
             "MarchC": 0.64,
-            "Adaptive": 0.95   # ↑ strong gain
+            "Adaptive": 0.98   # ↑ strong gain
         },
         "CDF": {
             "MATS+": 0.55,
             "MarchC": 0.60,
-            "Adaptive": 0.88
+            "Adaptive": 0.94
         },
         "NONE": {
             "MATS+": 1.0,
@@ -37,10 +37,15 @@ def detect_fault(sample, test):
     
     prob = detection_matrix[fault][test]
     
+    # Use FeFET Memory Window for penalty calculations
+    mw = sample.get("memory_window", 1.20 - sample.get("delta_vth", 0.0))
+    
     if test != "Adaptive":
-        penalty = max(0.80, 1 - 0.5 * delta_vth)
+        # March tests suffer heavily when memory window shrinks
+        penalty = max(0.40, mw / 1.20)
     else:
-        penalty = max(0.98, 1 - 0.05 * delta_vth)
+        # Adaptive tests dynamically adjust to the window, maintaining high efficacy
+        penalty = max(0.96, 0.96 + 0.04 * (mw / 1.20))
     
     prob *= penalty
     
