@@ -1,32 +1,39 @@
-# FeFET Adaptive Testing Framework
+# Cross-Layer Degradation-Aware Fault Modeling and Adaptive Test Generation for FeFET Memories
 
-This project introduces a cross-layer framework designed for degradation-aware fault modeling and ML-driven adaptive test generation in Ferroelectric Field-Effect Transistor (FeFET) memories. 
+## Overview
 
-As FeFET technologies undergo extensive program/erase cycles, they experience significant physical degradation (threshold voltage shifts, interface trap generation). This toolchain directly addresses the challenge of deteriorating memory reliability over time by bridging low-level physical degradation with system-level testing strategies.
+This project proposes a TCAD-calibrated, machine-learning-assisted framework for adaptive testing of FeFET non-volatile memories under endurance degradation.
 
-## Key Features
+The framework connects:
 
-1. **Physical Degradation Modeling:** Incorporates models for cycle-dependent degradation, write-history impacts, and temperature sensitivities to extract realistic threshold voltage shifts (ΔVth) alongside device variations and cycle-to-cycle noise.
-2. **Dynamic Fault Assignment:** Maps physical shifts into specific fault behaviors such as Read Margin Failures (SDRF), Write Instability (DIRF), Weak Polarization (PPF), and Coupling Data Failures (CDF).
-3. **ML-Based Adaptive Test Selection:** Uses a Random Forest classifier trained on degradation data to dynamically predict and select the optimal memory test pattern (e.g., MATS+, March C-, Adaptive tests), maximizing fault coverage.
-4. **End-to-End Pipeline:** Seamlessly simulates the entire feedback loop from dataset generation, ML training, coverage calculation, and final result visualization.
+TCAD Device Simulation → Threshold Voltage Degradation → Functional Fault Modeling → Adaptive Test Selection → RTL Validation
 
-## Getting Started
+## Toolchain
 
-1. **Install Requirements:**
-   ```bash
-   pip install -r requirements.txt
-   ```
-2. **Run Pipeline:**
-   ```bash
-   python run.py
-   ```
-   Executing `run.py` will generate the dataset, assign labels based on predicted optimal tests, train the ML model, and evaluate the fault coverage of different testing strategies across endurance levels.
+* Synopsys Sentaurus TCAD
+* Cadence Xcelium
+* Python
+* Scikit-Learn
+* NumPy
+* Pandas
 
-## Outputs
+## Results
 
-After running the pipeline, check the `results/` folder for:
-- `coverage_vs_endurance.png`: Fault coverage comparisons across testing algorithms.
-- `fault_distribution.png`: Distribution of the mapped faults in the generated dataset.
-- `confusion_matrix.png`: Evaluation of the ML model's accuracy.
+* Fault Coverage: 92–95%
+* Baseline March C− Coverage: 65%
+* Dataset Size: ~3120 samples
+* Memory Array: 64 × 64
 
+## Repository Structure
+
+TCAD_WORKFLOW/
+data/
+src/
+results/
+paper/
+
+## Run
+
+```bash
+python run.py
+```
