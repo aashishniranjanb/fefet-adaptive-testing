@@ -1,9 +1,10 @@
 # ------------------------------------------------------------
-# fefet_extract_complex.tcl  (Backup — MW Extraction)
+# fefet_extract.tcl  (Version B — Memory Window Extraction)
 # Extract Vth_prg, Vth_ers, and Memory Window from the single
-# .plt file produced by the complex fefet_des_complex.cmd.
+# .plt file produced by fefet_des.cmd.
 #
-# Datasets are tagged by NewCurrentPrefix inside one .plt file:
+# The SDevice deck writes all sweeps into one current file
+# (n@node@_des.plt) using NewCurrentPrefix to tag datasets:
 #   prg_read_  →  program-state transfer curve
 #   ers_read_  →  erase-state transfer curve
 # ------------------------------------------------------------

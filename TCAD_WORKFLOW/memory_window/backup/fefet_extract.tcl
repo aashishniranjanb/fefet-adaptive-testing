@@ -1,10 +1,12 @@
 # ------------------------------------------------------------
-# fefet_extract.tcl (Basic Backup Version)
-# Extract Vth from a single transfer curve sweep and push to SWB.
+# fefet_extract.tcl  (Basic Backup Version)
+# Extract Vth from a single transfer-curve sweep and push to SWB.
 # ------------------------------------------------------------
 
-# ---- Load single read curve ----
+# ---- Load the SDevice current plot file ----
 proj_load n@node|fefet_des@_des.plt proj
+
+# ---- Create Id-Vg curve ----
 cv_create idvg "proj gate OuterVoltage" "proj drain TotalCurrent"
 set Vth [f_VT idvg]
 
