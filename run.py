@@ -22,7 +22,7 @@ from src.dataset.tcad_integration import build_dataset_from_tcad
 def build_dataset(samples_per_bin=1000):
     dataset = []
     # ensure balanced endurance bins
-    for N in [1e3, 1e4, 1e5]:
+    for N in [1e3, 1e4, 1e5, 5e5, 1e6]:
         subset = generate_dataset(samples_per_bin)
         for s in subset:
             s["Ncycles"] = N
@@ -84,11 +84,12 @@ def train_ml(dataset):
     return model
 
 def batch_ml_predict(model, dataset):
-    X_all = [[s["delta_vth"], s["Ncycles"], s["T"], s["Nwrites"]] for s in dataset]
+    X_all = [[s.get("memory_window", 1.20 - s.get("delta_vth", 0.0)), s["Ncycles"], s["T"], s["Nwrites"]] for s in dataset]
     all_preds = model.predict(X_all)
     preds = []
     for i, s in enumerate(dataset):
-        if s["delta_vth"] > 0.12:
+        mw = s.get("memory_window", 1.20 - s.get("delta_vth", 0.0))
+        if mw < 0.85:
             preds.append("Adaptive")
         else:
             preds.append(all_preds[i])
@@ -98,7 +99,7 @@ def batch_ml_predict(model, dataset):
 # 3. Coverage vs Endurance (with CI)
 # -----------------------------
 def plot_coverage_with_errorbars(dataset, model):
-    levels = [1e3, 1e4, 1e5]
+    levels = [1e3, 1e4, 1e5, 5e5, 1e6]
     x = np.log10(levels)
 
     march_mean, march_err = [], []
@@ -129,7 +130,7 @@ def plot_coverage_with_errorbars(dataset, model):
     plt.errorbar(x, march_mean, yerr=march_err, marker='o', linewidth=2, label="March C-")
     plt.errorbar(x, adapt_mean, yerr=adapt_err, marker='s', linewidth=2, label="Proposed Adaptive")
 
-    plt.xticks(x, ["10³","10⁴","10⁵"])
+    plt.xticks(x, ["10³","10⁴","10⁵","5·10⁵","10⁶"])
     plt.xlabel("Endurance (Log Cycles)")
     plt.ylabel("Fault Coverage (%)")
     plt.title("Fault Coverage vs Endurance")
@@ -242,7 +243,8 @@ def generate_ablation_with_ci(dataset, model):
             if cfg == "Baseline":
                 det = detect_fault(s, "MarchC")
             elif cfg == "Degradation_Model":
-                test = "MATS+" if s["delta_vth"] > 0.12 else "MarchC"
+                mw = s.get("memory_window", 1.20 - s.get("delta_vth", 0.0))
+                test = "MATS+" if mw < 0.85 else "MarchC"
                 det = detect_fault(s, test)
             else:
                 det = detect_fault(s, preds[i])

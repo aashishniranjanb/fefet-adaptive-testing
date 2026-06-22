@@ -4,7 +4,7 @@ def prepare_data(dataset):
     X, y = [], []
     for sample in dataset:
         X.append([
-            sample["delta_vth"],
+            sample.get("memory_window", 1.20 - sample.get("delta_vth", 0.0)),
             sample["Ncycles"],
             sample["T"],
             sample["Nwrites"]
